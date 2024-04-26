@@ -30,8 +30,6 @@ def log_hyperparameters(object_dict: Dict[str, Any]) -> None:
         log.warning("Logger not found! Skipping hyperparameter logging...")
         return
 
-    hparams["module"] = cfg["module"]
-
     # save number of model parameters
     hparams["model/params/total"] = sum(p.numel() for p in model.parameters())
     hparams["model/params/trainable"] = sum(
@@ -41,12 +39,7 @@ def log_hyperparameters(object_dict: Dict[str, Any]) -> None:
         p.numel() for p in model.parameters() if not p.requires_grad
     )
 
-    hparams["data"] = cfg["data"]
-    hparams["trainer"] = cfg["trainer"]
-
     hparams["callbacks"] = cfg.get("callbacks")
-    hparams["extras"] = cfg.get("extras")
-
     hparams["run_specs"] = cfg.get("run_specs")
 
     # send hparams to all loggers

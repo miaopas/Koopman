@@ -102,7 +102,7 @@ class ODEDataModule(LightningDataModule):
             n_traj=sum(self.hparams.train_val_test_split), traj_len=self.hparams.length
         )
 
-        return torch.tensor(data)
+        return data
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.

@@ -1,79 +1,68 @@
-from typing import Any, Dict, List, Optional, Tuple
-
+from omegaconf import OmegaConf
 import hydra
+from functools import partial
 import lightning as L
 import rootutils
-import torch
-from lightning import Callback, LightningDataModule, LightningModule, Trainer
-from lightning.pytorch.loggers import Logger, WandbLogger
-from omegaconf import DictConfig
-
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-# ------------------------------------------------------------------------------------ #
-# the setup_root above is equivalent to:
-# - adding project root dir to PYTHONPATH
-#       (so you don't need to force user to install project as a package)
-#       (necessary before importing any local modules e.g. `from src import utils`)
-# - setting up PROJECT_ROOT environment variable
-#       (which is used as a base for paths in "configs/paths/default.yaml")
-#       (this way all filepaths are the same no matter where you run the code)
-# - loading environment variables from ".env" in root dir
-#
-# you can remove it if you:
-# 1. either install project as a package or move entry files to project root dir
-# 2. set `root_dir` to "." in "configs/paths/default.yaml"
-#
-# more info: https://github.com/ashleve/rootutils
-# ------------------------------------------------------------------------------------ #
+
+import torch
+from lightning.pytorch.loggers import WandbLogger
+from src.data.datamodule import ODEDataModule
+from src.data.ode_targets import DuffingOscillator
+from src.modules import ConstantMatrixMultiplier, PsiNN, LitModule
+
 
 from src.utils import (
     RankedLogger,
-    extras,
-    get_metric_value,
-    initialize_resolvers,
+    log_hyperparameters,
     instantiate_callbacks,
     instantiate_loggers,
-    log_hyperparameters,
     task_wrapper,
 )
 
-initialize_resolvers()
 log = RankedLogger(__name__, rank_zero_only=True)
 
 
-@task_wrapper
-def train(cfg: DictConfig = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
-    training.
+def train(cfg):
+    
+    L.seed_everything(123, workers=True)
 
-    This method is wrapped in optional @task_wrapper decorator, that controls the behavior during
-    failure. Useful for multiruns, saving info about the crash, etc.
+    datamodule =  ODEDataModule(
+        train_val_test_split=(16384, 1024, 1024),
+        batch_size=512, num_workers=0, pin_memory=False,
+        target=DuffingOscillator, length=128,dt=1e-3,t_step=0.25,dim=2,
+    )
 
-    :param cfg: A DictConfig configuration composed by Hydra.
-    :return: A tuple with metrics and dict with all instantiated objects.
-    """
-    # set seed for random number generators in pytorch, numpy and python.random
-    if cfg.run_specs.seed:
-        L.seed_everything(cfg.run_specs.seed, workers=True)
+    state_dim = 2
+    layer_sizes = [256, 256, 256]
+    n_psi_train = 22
+    activation_func = "tanh"
+    n_psi = 1 + state_dim + n_psi_train
 
-    log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+    dict_nn = PsiNN(
+        inputs_dim=state_dim,
+        layer_sizes=layer_sizes,
+        n_psi_train=n_psi_train,
+        activation_func=activation_func,
+    )
+    model_K = ConstantMatrixMultiplier(n_psi=n_psi)
+    optimizer = partial(torch.optim.Adam, lr=1e-2)
+    scheduler = partial(torch.optim.lr_scheduler.ReduceLROnPlateau,mode="min", factor=0.8, patience=20)
 
-    log.info(f"Instantiating model <{cfg.module.lit_module._target_}>")
-    model: LightningModule = hydra.utils.instantiate(cfg.module.lit_module)
+    model = LitModule(dict_nn, model_K, optimizer, scheduler, compile=False)
 
-    log.info("Instantiating callbacks...")
-    callbacks: List[Callback] = instantiate_callbacks(cfg.get("callbacks"))
+    callbacks = instantiate_callbacks(cfg.get("callbacks"))
 
-    log.info("Instantiating loggers...")
-    logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
+    logger = instantiate_loggers(cfg.get("logger"))
 
     for lg in logger:
         if isinstance(lg, WandbLogger):
             lg.watch(model, log_freq=100)
 
-    log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
+    trainer = L.Trainer(
+        default_root_dir=cfg.paths.run_dir,
+        max_epochs=1000,
+        accelerator='gpu', devices=1, callbacks=callbacks, logger=logger)
 
     object_dict = {
         "cfg": cfg,
@@ -88,35 +77,11 @@ def train(cfg: DictConfig = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
 
-    if cfg.run_specs.train_flag:
-        log.info("Starting training!")
-        trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.run_specs.ckpt_path)
-
-    if cfg.run_specs.test_flag:
-        log.info("Starting testing!")
-        ckpt_path = trainer.checkpoint_callback.best_model_path
-        if ckpt_path == "":
-            log.warning("Best ckpt not found! Using current weights for testing...")
-            ckpt_path = None
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
-        log.info(f"Best ckpt path: {ckpt_path}")
-
-
-@hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
-def main(cfg: DictConfig) -> Optional[float]:
-    """Main entry point for training.
-
-    :param cfg: DictConfig configuration composed by Hydra.
-    :return: Optional[float] with optimized metric value.
-    """
-    # apply extra utilities
-    # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
-
-    extras(cfg)
-
-    # train the model
-    train(cfg=cfg)
+    
+    trainer.fit(model=model, datamodule=datamodule)
 
 
 if __name__ == "__main__":
-    main()
+
+    cfg = OmegaConf.load('configs/config.yaml')
+    train(cfg)

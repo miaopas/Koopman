@@ -10,7 +10,7 @@ class AbstractODETarget:
         self.t_step = t_step
         self.n_step = int(t_step / dt)
 
-    # Method to generate data with PyTorch tensors
+
     def generate_data(self, n_traj, traj_len):
         # Generating random initial conditions
         x0 = torch.rand(n_traj, self.dim) * (self.x_max - self.x_min) + self.x_min
@@ -51,8 +51,8 @@ class DuffingOscillator(AbstractODETarget):
 
     # Override the rhs method with the Duffing oscillator's equations
     def rhs(self, x):
-        x1 = x[:, 1].unsqueeze(1)  # Reshape for proper concatenation
-        x2 = x[:, 0].unsqueeze(1)
+        x1 = x[:, 0].unsqueeze(1)  # Reshape for proper concatenation
+        x2 = x[:, 1].unsqueeze(1)
 
         # Define the right-hand side equations
         f1 = x2

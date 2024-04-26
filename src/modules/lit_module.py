@@ -4,6 +4,8 @@ from typing import Any, Dict, Tuple
 import torch
 from lightning import LightningModule
 from torch import nn
+from torch.optim import lr_scheduler as lr_scheduler
+from torch.optim.optimizer import Optimizer as Optimizer
 from torchmetrics import MaxMetric, MeanMetric
 
 
@@ -42,7 +44,8 @@ class LitModule(LightningModule):
 
     def __init__(
         self,
-        model: nn.Module,
+        psi,
+        model_K,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         compile: bool,
@@ -62,9 +65,10 @@ class LitModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(ignore=["model"], logger=False)
+        self.save_hyperparameters(ignore=["psi", "model_K"],logger=False)
 
-        self.model = model
+        self.psi = psi
+        self.model_K = model_K
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -73,9 +77,12 @@ class LitModule(LightningModule):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through the model."""
+        psi_x = self.psi(x)
+        K_psi_x = self.model_K(psi_x)
+        
+        return K_psi_x
 
-        output = self.model(x)
-        return output
+
 
     def on_train_start(self) -> None:
         """Lightning hook that is called when training begins."""
@@ -94,8 +101,9 @@ class LitModule(LightningModule):
             - A tensor of losses.
             - A tensor of target labels.
         """
-        x, y = batch
+        x = batch
         yhat = self(x)
+        y = torch.zeros_like(yhat)
         loss = self.criterion(yhat, y)
         return loss
 
@@ -194,5 +202,4 @@ class LitModule(LightningModule):
         return {"optimizer": optimizer}
 
 
-if __name__ == "__main__":
-    _ = LitModule(None, None, None, None, None)
+
