@@ -9,7 +9,7 @@ paths:
 callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: ${paths.run_dir}/checkpoints
+    # dirpath: ${paths.run_dir}/checkpoints
     filename: epoch_{epoch:03d}-{val/loss:.3e}
     monitor: val/loss
     verbose: false
@@ -43,25 +43,6 @@ callbacks:
       _target_: lightning.pytorch.callbacks.progress.rich_progress.RichProgressBarTheme
       metrics_format: .2e
 logger:
-  csv:
-    _target_: lightning.pytorch.loggers.csv_logs.CSVLogger
-    save_dir: ${paths.run_dir}
-    name: csv/
-    prefix: ''
-  wandb:
-    _target_: lightning.pytorch.loggers.wandb.WandbLogger
-    save_dir: ${paths.run_dir}
-    offline: false
-    id: null
-    anonymous: null
-    project: Koopman
-    log_model: false
-    prefix: ''
-    # entity: Long_Memory_Arena
-    group: test
-    tags: ${run_specs.tags}
-    job_type: ''
-    name: ${run_specs.task_name}
   tensorboard:
     _target_: lightning.pytorch.loggers.tensorboard.TensorBoardLogger
     save_dir: ${paths.run_dir}/tensorboard/
@@ -69,3 +50,24 @@ logger:
     log_graph: false
     default_hp_metric: true
     prefix: ''
+  
+  # csv:
+  #   _target_: lightning.pytorch.loggers.csv_logs.CSVLogger
+  #   save_dir: ${paths.run_dir}
+  #   name: csv/
+  #   prefix: ''
+  # wandb:
+  #   _target_: lightning.pytorch.loggers.wandb.WandbLogger
+  #   save_dir: ${paths.run_dir}
+  #   offline: false
+  #   id: null
+  #   anonymous: null
+  #   project: Koopman
+  #   log_model: false
+  #   prefix: ''
+  #   # entity: Long_Memory_Arena
+  #   group: test
+  #   tags: ${run_specs.tags}
+  #   job_type: ''
+  #   name: ${run_specs.task_name}
+  

@@ -4,7 +4,10 @@ from functools import partial
 import lightning as L
 import rootutils
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+import logging
 
+# configure logging at the root level of Lightning
+# logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
 import torch
 from lightning.pytorch.loggers import WandbLogger
 from src.data.datamodule import ODEDataModule
@@ -28,8 +31,8 @@ def train(cfg):
     L.seed_everything(123, workers=True)
 
     datamodule =  ODEDataModule(
-        train_val_test_split=(16384, 1024, 1024),
-        batch_size=512, num_workers=0, pin_memory=False,
+        train_val_test_split=(512*50, 1024, 1024),
+        batch_size=512, num_workers=31, pin_memory=False,
         target=DuffingOscillator, length=128,dt=1e-3,t_step=0.25,dim=2,
     )
 
