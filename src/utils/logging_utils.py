@@ -29,8 +29,7 @@ def log_hyperparameters(object_dict: Dict[str, Any]) -> None:
     if not trainer.logger:
         log.warning("Logger not found! Skipping hyperparameter logging...")
         return
-    
-    
+
     hparams["module"] = cfg["module"]
 
     # save number of model parameters

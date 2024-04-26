@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 
+
 # The abstract class for generating ODE-based data using PyTorch tensors
 class AbstractODETarget:
     def __init__(self, dt=1e-3, t_step=0.25, dim=2):
@@ -37,6 +38,7 @@ class AbstractODETarget:
             x += self.dt * self.rhs(x)
         return x
 
+
 # Class representing a Duffing Oscillator with PyTorch
 class DuffingOscillator(AbstractODETarget):
     def __init__(self, dt=1e-3, t_step=0.25, dim=2, delta=0.5, alpha=1.0, beta=-1.0):
@@ -51,10 +53,10 @@ class DuffingOscillator(AbstractODETarget):
     def rhs(self, x):
         x1 = x[:, 1].unsqueeze(1)  # Reshape for proper concatenation
         x2 = x[:, 0].unsqueeze(1)
-        
+
         # Define the right-hand side equations
         f1 = x2
         f2 = -self.delta * x2 - x1 * (self.beta + self.alpha * x1**2)
-        
+
         # Concatenate the results to get the updated values for both states
         return torch.cat([f1, f2], dim=-1)

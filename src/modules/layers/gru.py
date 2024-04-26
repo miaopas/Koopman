@@ -45,7 +45,6 @@ class GRU_(nn.Module):
             layers.append(nn.Linear(kwarg["hidden_size"], kwarg["input_size"]))
 
         self.layers = nn.ModuleList(layers)
-        
 
     def forward(self, x):
         """_summary_
@@ -56,9 +55,9 @@ class GRU_(nn.Module):
         Returns:
             _type_: _description_
         """
-        for i in range(0,len(self.layers), 3):
+        for i in range(0, len(self.layers), 3):
             x = self.layers[i](x)
-            x = self.layers[i+1](x)[0]
-            x = self.layers[i+2](x)
+            x = self.layers[i + 1](x)[0]
+            x = self.layers[i + 2](x)
 
         return x

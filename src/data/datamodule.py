@@ -3,21 +3,12 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 from lightning import LightningDataModule
-from torch.utils.data import (
-    DataLoader,
-    Dataset,
-    TensorDataset,
-    random_split,
-)
+from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 
 from src.data.ode_targets import AbstractODETarget as ODETarget
-
 from src.utils import pylogger
 
-
 log = pylogger.RankedLogger(__name__, rank_zero_only=True)
-
-
 
 
 class ODEDataModule(LightningDataModule):
@@ -68,9 +59,9 @@ class ODEDataModule(LightningDataModule):
         save_file: bool = False,
         target: ODETarget = None,
         length: int = 128,
-        dt: float=1e-3, 
-        t_step: float=0.25, 
-        dim: int =2
+        dt: float = 1e-3,
+        t_step: float = 0.25,
+        dim: int = 2,
     ) -> None:
         """Initialize a `ODEDataModule`.
 
@@ -79,7 +70,6 @@ class ODEDataModule(LightningDataModule):
         :param batch_size: The batch size. Defaults to `64`.
         :param num_workers: The number of workers. Defaults to `0`.
         :param pin_memory: Whether to pin memory. Defaults to `False`.
-
         """
         super().__init__()
 
@@ -106,9 +96,9 @@ class ODEDataModule(LightningDataModule):
         Do not use it to assign state (self.x = y).
         """
         data = self.ode_target.generate_data(
-            n_traj = sum(self.hparams.train_val_test_split), 
-            traj_len = self.hparams.length)
-        
+            n_traj=sum(self.hparams.train_val_test_split), traj_len=self.hparams.length
+        )
+
         return torch.tensor(data)
 
     def setup(self, stage: Optional[str] = None) -> None:
