@@ -1,14 +1,17 @@
 import os
 from typing import Any, Dict, Optional, Tuple
+import rootutils
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+
 
 import torch
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 
 from src.data.ode_targets import AbstractODETarget as ODETarget
-from src.utils import pylogger
+from src.utils import RankedLogger
 
-log = pylogger.RankedLogger(__name__, rank_zero_only=True)
+log = RankedLogger(__name__, rank_zero_only=True)
 
 
 class ODEDataModule(LightningDataModule):
@@ -191,5 +194,4 @@ class ODEDataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    # LFL()
-    _ = ODEDataModule(data_dir="../../data")
+    log.info('aa')
