@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from lightning import LightningModule
 
 
-class DicNN(nn.Module):
+class DicNN(LightningModule):
     """Trainable dictionaries."""
 
     def __init__(self, inputs_dim=1, layer_sizes=[64, 64], n_psi_train=22, activation_func="tanh"):
@@ -23,7 +24,7 @@ class DicNN(nn.Module):
 
         # Creating the output layer
         self.output_layer = nn.Linear(layer_sizes[-1], n_psi_train)
-
+        self.save_hyperparameters()
     def forward(self, inputs):
         # Check layer dimension
         if inputs.shape[-1] != self.inputs_dim:
@@ -67,11 +68,10 @@ class PsiNN(nn.Module):
             else None
         )
 
-    @classmethod
-    def generate_B(self, inputs, n_psi_train, add_constant=True):
+    def generate_B(self, inputs, add_constant=True):
         target_dim = inputs.shape[-1]  # Get the last dimension of the input tensor
 
-        psi_dim = n_psi_train + target_dim + add_constant
+        psi_dim = self.n_psi_train + target_dim + add_constant
 
         B = torch.zeros((psi_dim, target_dim), dtype=inputs.dtype)
 

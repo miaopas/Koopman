@@ -3,6 +3,7 @@ import hydra
 from functools import partial
 import lightning as L
 import rootutils
+from torch import nn
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 import logging
 
@@ -32,8 +33,8 @@ def train(cfg):
 
     datamodule =  ODEDataModule(
         train_val_test_split=(512*50, 1024, 1024),
-        batch_size=512, num_workers=31, pin_memory=False,
-        target=DuffingOscillator, length=128,dt=1e-3,t_step=0.25,dim=2,
+        batch_size=2048, num_workers=31, pin_memory=False,
+        target=DuffingOscillator, length=50, dt=1e-3,t_step=0.25,dim=2,
     )
 
     state_dim = 2
@@ -48,9 +49,12 @@ def train(cfg):
         n_psi_train=n_psi_train,
         activation_func=activation_func,
     )
-    model_K = ConstantMatrixMultiplier(n_psi=n_psi)
-    optimizer = partial(torch.optim.Adam, lr=1e-2)
-    scheduler = partial(torch.optim.lr_scheduler.ReduceLROnPlateau,mode="min", factor=0.8, patience=20)
+    # model_K = ConstantMatrixMultiplier(n_psi=n_psi)
+
+    model_K = nn.Linear(n_psi, n_psi)
+
+    optimizer = partial(torch.optim.Adam, lr=5e-3)
+    scheduler = partial(torch.optim.lr_scheduler.ReduceLROnPlateau,mode="min", factor=0.5, patience=3)
 
     model = LitModule(dict_nn, model_K, optimizer, scheduler, compile=False)
 
@@ -65,7 +69,7 @@ def train(cfg):
     trainer = L.Trainer(
         default_root_dir=cfg.paths.run_dir,
         max_epochs=1000,
-        accelerator='gpu', devices=1, callbacks=callbacks, logger=logger)
+        accelerator='gpu', devices=1, callbacks=callbacks, logger=logger, precision="64-true")
 
     object_dict = {
         "cfg": cfg,

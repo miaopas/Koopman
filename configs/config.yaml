@@ -13,7 +13,7 @@ callbacks:
     filename: epoch_{epoch:03d}-{val/loss:.3e}
     monitor: val/loss
     verbose: false
-    save_last: true
+    # save_last: true
     save_top_k: 5
     mode: min
     auto_insert_metric_name: false

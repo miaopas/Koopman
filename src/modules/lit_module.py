@@ -65,7 +65,8 @@ class LitModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(ignore=["psi", "model_K"],logger=False)
+        # self.save_hyperparameters(ignore=["psi", "model_K"],logger=False)
+        self.save_hyperparameters(logger=False)
 
         self.psi = psi
         self.model_K = model_K
@@ -102,7 +103,7 @@ class LitModule(LightningModule):
             - A tensor of target labels.
         """
         x = batch
-        yhat = self(x)
+        yhat = self(x[:,:-1,:]) - self.psi(x[:,1:,:])
         y = torch.zeros_like(yhat)
         loss = self.criterion(yhat, y)
         return loss
@@ -200,6 +201,39 @@ class LitModule(LightningModule):
                 },
             }
         return {"optimizer": optimizer}
+    
 
 
+    def predict_multistep(self, x0, Nt):
+        self.eval()
+        x_pred_list = [x0]
 
+        psi_x0 = self.psi(x0)
+        psi_x_pred_list = [psi_x0]
+
+        B = self.psi.generate_B(x0)
+
+        for _ in range(Nt):
+            psi_pred = self.model_K(psi_x_pred_list[-1])
+            x_pred = torch.matmul(psi_pred, B)
+            x_pred_list.append(x_pred.detach())
+            psi_x_pred_list.append(psi_pred.detach())
+
+        return torch.stack(x_pred_list, dim=1)
+
+    def predict_onestep(self, x0, Nt):
+        self.eval()
+        x_pred_list = [x0]
+
+        psi_x = self.psi(x0)
+       
+
+        B = self.psi.generate_B(x0)
+
+        for _ in range(Nt):
+            psi_pred = self.model_K(psi_x)
+            x_pred = torch.matmul(psi_pred, B)
+            x_pred_list.append(x_pred.detach())
+            psi_x = self.psi(x_pred)
+
+        return torch.stack(x_pred_list, dim=1)
